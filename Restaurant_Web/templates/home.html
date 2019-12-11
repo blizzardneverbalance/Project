@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurants</title>
+</head>
+<body>
+    <h1>The Mega Bite</h1>
+    {% if results %}
+    <table>
+    <tr>
+        <th>Explore the newest additions</th>
+    </tr>
+    {% for result in results %}
+        <tr>
+            <td>{{result.name}}
+            <td>{{result.location}}
+            <td>{{result.category}}
+            <td>{{result.price}}</td>
+        </tr>
+    {%endfor%}
+    </table>
+    {% endif %}
+    <table>
+        <tr><td><a href="/add">Add a restaurant</a></td></tr>
+        <tr><td><a href="/view">Find a perfect bite</a></td></tr>
+    </table>
+</body>
+</html>

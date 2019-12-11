@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Restaurants</title>
+</head>
+<body>
+    <h1>Find the perfect bite</h1>
+    <form method="POST">
+        Category:<br>
+        <input type="text" name="category"><br>
+        Location:<br>
+        <input type="text" name="location"><br>
+        Maximum Price: (1 is cheap, 4 is expensive)<br>
+        <input type="text" name="price" value="{{price}}"><br>
+    <input type="submit" value="Submit"><br><br>
+    </form>
+    {% if results %}
+    <table>
+        <tr>
+            <th>We found your perfect bite!</th>
+        </tr>
+        {% for result in results %}
+        <tr>
+            <td>{{result.name}}
+            <td>{{result.location}}
+            <td>{{result.category}}
+            <td>{{result.price}}</td>
+        </tr>
+        {%endfor%}
+    </table>
+    {% elif price %}
+    <p>Sorry we could not find your perfect bite :(</p>
+    {%endif%}
+    <p><a href="/home">Home</a></p>
+</body>
+</html>
