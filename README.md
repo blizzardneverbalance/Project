@@ -1,1 +1,5 @@
-# Project
+### Project
+This repository contains some projects I have worked on before.<br />
+Most projects are written in Java and Python.<br />
+I also have a Javascript project: 'https://josemperez.bitbucket.io/'.<br />
+This respository is continuously updated.
