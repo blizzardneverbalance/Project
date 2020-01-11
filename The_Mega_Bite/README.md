@@ -11,6 +11,6 @@ Each restaurant will have the following information:
 The app will store this information in a splite database named restaurants.db. A restaurant id will be assigned automatically and it will be used the primary key for the table.<br />
 
 Initally, before any restaurants are added to the database, the application will show the following on its home page:
-![alt text][pic1]
+![image1][pic1]
 
 [pic1]:https://github.com/blizzardneverbalance/Project/tree/master/The_Mega_Bite/images/Mega1.png "Logo Title Text 1"
