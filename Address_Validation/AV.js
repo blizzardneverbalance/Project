@@ -3,7 +3,7 @@ const prompt = require("prompt-sync")();
 // writeFile function is defined. 
 const fs = require('fs') 
 var shippo = require("shippo")(
-  "shippo_live_c43a0822c210a70c0aaf2f71a0e7055d39db1784"
+  "Shippo-API-Access-Code"
 );
 
 const name = prompt("What is your name?");
