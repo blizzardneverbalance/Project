@@ -13,13 +13,35 @@
 
 <!--- Begin Example HTML ------------------------------------------------------>
 <div id="myBoard" style="width: 400px"></div>
+Search depth:
+        <select id="search-depth">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+
+        <br>
+        <span>Positions evaluated: <span id="position-count"></span></span>
+        <br>
+        <span>Time: <span id="time"></span></span>
+        <br>
+        <span>Positions/s: <span id="positions-per-s"></span> </span>
+        <br>
 <button id="startBtn">Start Position</button>
-<button id="clearBtn">Clear Board</button><br/>
+<button id="clearBtn">Clear Board</button>
+<button id="flipOrientationBtn">Flip orientation</button>
+<button id="setRuyLopezBtn">Spanish Opening</button>
+<button id="setUndoBtn">undo</button>
+<br/>
 <label>Status:</label>
 <div id="status"></div>
-<!--<label>FEN:</label>
-<div id="fen"></div>-->
+<label>FEN:</label>
+<div id="fen"></div>
 <label>Record:</label>
+<br/>
+<div id="move-history" class="move-history">
 <div id="pgn"></div>
 <!--- End Example HTML -------------------------------------------------------->
 
@@ -33,7 +55,10 @@ var game = new Chess()
 var $status = $('#status')
 var $fen = $('#fen')
 var $pgn = $('#pgn')
+var whiteSquareGrey = '#a9a9a9'
+var blackSquareGrey = '#696969'
 
+/* Play with other players
 function onDragStart (source, piece, position, orientation) {
   // do not pick up pieces if the game is over
   if (game.game_over()) return false
@@ -58,7 +83,7 @@ function onDrop (source, target) {
 
   updateStatus()
 }
-
+*/
 // update the board position after the piece snap
 // for castling, en passant, pawn promotion
 function onSnapEnd () {
@@ -98,33 +123,368 @@ function updateStatus () {
   $pgn.html(game.pgn())
 }
 
+function onChange (oldPos, newPos) {
+  console.log('Position changed:')
+  console.log('Old position: ' + Chessboard.objToFen(oldPos))
+  console.log('New position: ' + Chessboard.objToFen(newPos))
+  console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+}
+
+var renderMoveHistory = function (moves) {
+  // movies => [object, object, objec, object]
+  var historyElement = $("#move-history").empty();
+  historyElement.empty();
+  for (var i = 0; i < moves.length; i = i + 2) {
+    historyElement.append(
+      /*       "<span>" +
+        moves[i] +
+        " " +
+        (moves[i + 1] ? moves[i + 1] : " ") +
+        "</span><br>" */
+      "<span>" +
+        "one round：" +
+        moves[i].from +
+        " ~ " +
+        moves[i].to +
+        (moves[i + 1]
+          ? " , " + moves[i + 1].from + " ~ " + moves[i + 1].to
+          : " ") +
+        "</span><br/>"
+    );
+  }
+  historyElement.scrollTop(historyElement[0].scrollHeight);
+};
+
+function removeGreySquares () {
+  $('#myBoard .square-55d63').css('background', '')
+}
+
+function greySquare (square) {
+  var $square = $('#myBoard .square-' + square)
+
+  var background = whiteSquareGrey
+  if ($square.hasClass('black-3c85d')) {
+    background = blackSquareGrey
+  }
+
+  $square.css('background', background)
+}
+
+function onMouseoverSquare (square, piece) {
+  // get list of possible moves for this square
+  var moves = game.moves({
+    square: square,
+    verbose: true
+  })
+
+  // exit if there are no moves available for this square
+  if (moves.length === 0) return
+
+  // highlight the square they moused over
+  greySquare(square)
+
+  // highlight the possible squares for this piece
+  for (var i = 0; i < moves.length; i++) {
+    greySquare(moves[i].to)
+  }
+}
+
+function onMouseoutSquare (square, piece) {
+  removeGreySquares()
+}
+
+// -------------- Begin of AI -----------------------
+var minimaxRoot = function (depth, game, isMaximisingPlayer) {
+  var newGameMoves = game.ugly_moves();
+  var bestMove = -9999;
+  var bestMoveFound;
+
+  for (var i = 0; i < newGameMoves.length; i++) {
+    var newGameMove = newGameMoves[i];
+    game.ugly_move(newGameMove);
+    var value = minimax(depth - 1, game, -10000, 10000, !isMaximisingPlayer);
+    game.undo();
+    if (value >= bestMove) {
+      bestMove = value;
+      bestMoveFound = newGameMove;
+    }
+  }
+  return bestMoveFound;
+};
+
+var minimax = function (depth, game, alpha, beta, isMaximisingPlayer) {
+  positionCount++;
+  if (depth === 0) {
+    return -evaluateBoard(game.board());
+  }
+
+  var newGameMoves = game.ugly_moves();
+
+  if (isMaximisingPlayer) {
+    var bestMove = -9999;
+    for (var i = 0; i < newGameMoves.length; i++) {
+      game.ugly_move(newGameMoves[i]);
+      bestMove = Math.max(
+        bestMove,
+        minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer)
+      );
+      game.undo();
+      alpha = Math.max(alpha, bestMove);
+      if (beta <= alpha) {
+        return bestMove;
+      }
+    }
+    return bestMove;
+  } else {
+    var bestMove = 9999;
+    for (var i = 0; i < newGameMoves.length; i++) {
+      game.ugly_move(newGameMoves[i]);
+      bestMove = Math.min(
+        bestMove,
+        minimax(depth - 1, game, alpha, beta, !isMaximisingPlayer)
+      );
+      game.undo();
+      beta = Math.min(beta, bestMove);
+      if (beta <= alpha) {
+        return bestMove;
+      }
+    }
+    return bestMove;
+  }
+};
+
+var evaluateBoard = function (board) {
+  var totalEvaluation = 0;
+  for (var i = 0; i < 8; i++) {
+    for (var j = 0; j < 8; j++) {
+      totalEvaluation = totalEvaluation + getPieceValue(board[i][j], i, j);
+    }
+  }
+  return totalEvaluation;
+};
+
+var reverseArray = function (array) {
+  return array.slice().reverse();
+};
+
+var pawnEvalWhite = [
+  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
+  [1.0, 1.0, 2.0, 3.0, 3.0, 2.0, 1.0, 1.0],
+  [0.5, 0.5, 1.0, 2.5, 2.5, 1.0, 0.5, 0.5],
+  [0.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0],
+  [0.5, -0.5, -1.0, 0.0, 0.0, -1.0, -0.5, 0.5],
+  [0.5, 1.0, 1.0, -2.0, -2.0, 1.0, 1.0, 0.5],
+  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+];
+
+var pawnEvalBlack = reverseArray(pawnEvalWhite);
+
+var knightEval = [
+  [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
+  [-4.0, -2.0, 0.0, 0.0, 0.0, 0.0, -2.0, -4.0],
+  [-3.0, 0.0, 1.0, 1.5, 1.5, 1.0, 0.0, -3.0],
+  [-3.0, 0.5, 1.5, 2.0, 2.0, 1.5, 0.5, -3.0],
+  [-3.0, 0.0, 1.5, 2.0, 2.0, 1.5, 0.0, -3.0],
+  [-3.0, 0.5, 1.0, 1.5, 1.5, 1.0, 0.5, -3.0],
+  [-4.0, -2.0, 0.0, 0.5, 0.5, 0.0, -2.0, -4.0],
+  [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
+];
+
+var bishopEvalWhite = [
+  [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
+  [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+  [-1.0, 0.0, 0.5, 1.0, 1.0, 0.5, 0.0, -1.0],
+  [-1.0, 0.5, 0.5, 1.0, 1.0, 0.5, 0.5, -1.0],
+  [-1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, -1.0],
+  [-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0],
+  [-1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, -1.0],
+  [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
+];
+
+var bishopEvalBlack = reverseArray(bishopEvalWhite);
+
+var rookEvalWhite = [
+  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  [0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5],
+  [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
+  [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
+  [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
+  [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
+  [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
+  [0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0],
+];
+
+var rookEvalBlack = reverseArray(rookEvalWhite);
+
+var evalQueen = [
+  [-2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0],
+  [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
+  [-1.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0],
+  [-0.5, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -0.5],
+  [0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -0.5],
+  [-1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0],
+  [-1.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, -1.0],
+  [-2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0],
+];
+
+var kingEvalWhite = [
+  [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+  [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+  [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+  [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+  [-2.0, -3.0, -3.0, -4.0, -4.0, -3.0, -3.0, -2.0],
+  [-1.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0],
+  [2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0],
+  [2.0, 3.0, 1.0, 0.0, 0.0, 1.0, 3.0, 2.0],
+];
+
+var kingEvalBlack = reverseArray(kingEvalWhite);
+
+var getPieceValue = function (piece, x, y) {
+  if (piece === null) {
+    return 0;
+  }
+  var getAbsoluteValue = function (piece, isWhite, x, y) {
+    if (piece.type === "p") {
+      return 10 + (isWhite ? pawnEvalWhite[y][x] : pawnEvalBlack[y][x]);
+    } else if (piece.type === "r") {
+      return 50 + (isWhite ? rookEvalWhite[y][x] : rookEvalBlack[y][x]);
+    } else if (piece.type === "n") {
+      return 30 + knightEval[y][x];
+    } else if (piece.type === "b") {
+      return 30 + (isWhite ? bishopEvalWhite[y][x] : bishopEvalBlack[y][x]);
+    } else if (piece.type === "q") {
+      return 90 + evalQueen[y][x];
+    } else if (piece.type === "k") {
+      return 900 + (isWhite ? kingEvalWhite[y][x] : kingEvalBlack[y][x]);
+    }
+    throw "Unknown piece type: " + piece.type;
+  };
+
+  var absoluteValue = getAbsoluteValue(piece, piece.color === "w", x, y);
+  return piece.color === "w" ? absoluteValue : -absoluteValue;
+};
+
+/* board visualization and games state handling */
+var onDragStart = function (source, piece, position, orientation) {
+  if (
+    game.in_checkmate() === true ||
+    game.in_draw() === true ||
+    piece.search(/^b/) !== -1
+  ) {
+    return false;
+  }
+};
+
+var onDrop = function (source, target) {
+  console.log(source, target);
+  var move = game.move({
+    from: source,
+    to: target,
+    promotion: "q",
+  });
+
+  removeGreySquares();
+  if (move === null) {
+    return "snapback";
+  }
+
+  renderMoveHistory(game.history({ verbose: true }));
+  window.setTimeout(makeBestMove, 250);
+};
+
+/* Test Random Computer
+function makeRandomMove () {
+  var possibleMoves = game.moves()
+
+  // game over
+  if (possibleMoves.length === 0) return
+
+  var randomIdx = Math.floor(Math.random() * possibleMoves.length)
+  game.move(possibleMoves[randomIdx])
+  board.position(game.fen())
+}
+*/
+
+var makeBestMove = function () {
+  var bestMove = getBestMove(game);
+  game.ugly_move(bestMove);
+  board.position(game.fen());
+  renderMoveHistory(game.history({ verbose: true }));
+  if (game.game_over()) {
+    alert("Game over");
+  }
+};
+
+var positionCount;
+var getBestMove = function (game) {
+  if (game.game_over()) {
+    alert("Game over");
+  }
+
+  positionCount = 0;
+  var depth = parseInt($("#search-depth").find(":selected").text());
+
+  var d = new Date().getTime();
+  var bestMove = minimaxRoot(depth, game, true);
+  var d2 = new Date().getTime();
+  var moveTime = d2 - d;
+  var positionsPerS = (positionCount * 1000) / moveTime;
+
+  $("#position-count").text(positionCount);
+  $("#time").text(moveTime / 1000 + "s");
+  $("#positions-per-s").text(positionsPerS);
+  return bestMove;
+};
+// -------------- End of AI -------------------------
+
 var config = {
   draggable: true,
   position: 'start',
-  //dropOffBoard: 'trash',
-  //sparePieces: true
+  onChange: onChange,
   onDragStart: onDragStart,
   onDrop: onDrop,
+  onMouseoutSquare: onMouseoutSquare,
+  onMouseoverSquare: onMouseoverSquare,
   onSnapEnd: onSnapEnd
 }
 board = Chessboard('myBoard', config)
+
 $('#startBtn').on('click', function () {
   board.start()
   game = new Chess()
   $status.html(status)
   $fen.html(game.fen())
   $pgn.html(game.pgn())
-  //var $status = $('#status')
-  //var $fen = $('#fen')
-  //var $pgn = $('#pgn')
 })
+
 $('#clearBtn').on('click', function () {
   board.clear()
-  //game = new Chess()
-  //var $status = $('#status')
-  //var $fen = $('#fen')
-  //var $pgn = $('#pgn')
 })
+
+$('#flipOrientationBtn').on('click', board.flip)
+
+$('#setRuyLopezBtn').on('click', function () {
+  var ruyLopez = 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3'
+  game = new Chess(ruyLopez)
+  board.position(ruyLopez)
+  $status.html(status)
+  $fen.html(game.fen())
+  $pgn.html(game.pgn())
+  window.setTimeout(makeBestMove, 250);
+})
+
+$("#setUndoBtn").on("click", () => {
+  var result = game.undo();
+  console.log(result);
+  if (result) {
+    board.position(game.fen());
+    result = game.undo();
+    board.position(game.fen());
+    renderMoveHistory(game.history({ verbose: true }));
+  }
+});
 
 updateStatus()
 // --- End Example JS ----------------------------------------------------------
