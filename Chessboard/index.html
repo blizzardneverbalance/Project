@@ -20,7 +20,8 @@ Search depth:
             <option value="4">4</option>
             <option value="5">5</option>
         </select>
-
+		<button id="switchBtn">on/off</button>
+        <span id="switchState"></span>
         <br>
         <span>Positions evaluated: <span id="position-count"></span></span>
         <br>
@@ -31,8 +32,12 @@ Search depth:
 <button id="startBtn">Start Position</button>
 <button id="clearBtn">Clear Board</button>
 <button id="flipOrientationBtn">Flip orientation</button>
-<button id="setRuyLopezBtn">Spanish Opening</button>
 <button id="setUndoBtn">undo</button>
+<button id="destroyBtn">Destroy Board</button>
+<br/>
+<button id="setUpBoard">Set up board</button>
+<button id="startGame">Start game</button>
+<button id="setRuyLopezBtn">Spanish Opening</button>
 <br/>
 <label>Status:</label>
 <div id="status"></div>
@@ -56,19 +61,9 @@ var $fen = $('#fen')
 var $pgn = $('#pgn')
 var whiteSquareGrey = '#a9a9a9'
 var blackSquareGrey = '#696969'
+var customFen = 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3'
 
 /* Play with other players
-function onDragStart (source, piece, position, orientation) {
-  // do not pick up pieces if the game is over
-  if (game.game_over()) return false
-
-  // only pick up pieces for the side to move
-  if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-      (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
-    return false
-  }
-}
-
 function onDrop (source, target) {
   // see if the move is legal
   var move = game.move({
@@ -127,6 +122,8 @@ function onChange (oldPos, newPos) {
   console.log('Old position: ' + Chessboard.objToFen(oldPos))
   console.log('New position: ' + Chessboard.objToFen(newPos))
   console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  customFen = Chessboard.objToFen(newPos)
+  console.log(customFen)
 }
 
 var renderMoveHistory = function (moves) {
@@ -366,6 +363,8 @@ var getPieceValue = function (piece, x, y) {
 };
 
 /* board visualization and games state handling */
+var state = true;
+/*
 var onDragStart = function (source, piece, position, orientation) {
   if (
     game.in_checkmate() === true ||
@@ -375,6 +374,17 @@ var onDragStart = function (source, piece, position, orientation) {
     return false;
   }
 };
+*/
+function onDragStart (source, piece, position, orientation) {
+  // do not pick up pieces if the game is over
+  if (game.game_over()) return false
+
+  // only pick up pieces for the side to move
+  if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+      (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+    return false
+  }
+}
 
 var onDrop = function (source, target) {
   console.log(source, target);
@@ -391,7 +401,9 @@ var onDrop = function (source, target) {
 
   renderMoveHistory(game.history({ verbose: true }));
   updateStatus()
+  if (state) {
   window.setTimeout(makeBestMove, 250);
+  }
 };
 
 /* Test Random Computer
@@ -442,6 +454,9 @@ var getBestMove = function (game) {
 
 var config = {
   draggable: true,
+  //dropOffBoard: 'trash',
+  //sparePieces: true,
+  
   position: 'start',
   onChange: onChange,
   onDragStart: onDragStart,
@@ -450,9 +465,11 @@ var config = {
   onMouseoverSquare: onMouseoverSquare,
   onSnapEnd: onSnapEnd
 }
+
 board = Chessboard('myBoard', config)
 
 $('#startBtn').on('click', function () {
+  board = Chessboard('myBoard', config)
   board.start()
   game = new Chess()
   $status.html(status)
@@ -461,12 +478,19 @@ $('#startBtn').on('click', function () {
 })
 
 $('#clearBtn').on('click', function () {
+  board = Chessboard('myBoard', config)
   board.clear()
 })
 
-$('#flipOrientationBtn').on('click', board.flip)
+$('#flipOrientationBtn').on('click', function () {
+  board.flip()
+  if (state) {
+  window.setTimeout(makeBestMove, 250);
+  }
+})
 
 $('#setRuyLopezBtn').on('click', function () {
+  board = Chessboard('myBoard', config)
   var ruyLopez = 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3'
   game = new Chess(ruyLopez)
   board.position(ruyLopez)
@@ -486,7 +510,33 @@ $("#setUndoBtn").on("click", () => {
     renderMoveHistory(game.history({ verbose: true }));
   }
 });
+document.getElementById("switchState").innerText = state;
+$("#switchBtn").on("click", () => {
+  state = !state;
+  document.getElementById("switchState").innerText = state;
+});
+$('#destroyBtn').on('click', board.destroy)
 
+var cfg = {
+  draggable: true,
+  dropOffBoard: 'trash',
+  sparePieces: true,
+  onChange: onChange
+}
+
+$('#setUpBoard').on('click', function () {
+  board = Chessboard('myBoard', cfg)
+})
+
+$('#startGame').on('click', function () {
+  customFen = customFen + ' w KQkq - 0 1'
+  board = Chessboard('myBoard', config)
+  game = new Chess(customFen)
+  board.position(customFen)
+  $status.html(status)
+  $fen.html(game.fen())
+  $pgn.html(game.pgn())
+})
 updateStatus()
 // --- End Example JS ----------------------------------------------------------
 </script>
