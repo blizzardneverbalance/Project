@@ -66,6 +66,9 @@ var whiteSquareGrey = '#a9a9a9'
 var blackSquareGrey = '#696969'
 var customFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 var saveFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+var savepgn = $('#pgn')
+var saveStatus = $('#status')
+var saveHistory = null
 
 /* Play with other players
 function onDrop (source, target) {
@@ -542,15 +545,21 @@ $('#startGame').on('click', function () {
 })
 
 $('#saveBoard').on('click', function () {
-  saveFen = customFen + ' w KQkq - 0 1'
-  console.log(saveFen)
+  console.log('Save game:')
+  saveFen = game.fen()
+  console.log('FEN: ' + saveFen)
+  savepgn = game.pgn()
+  console.log('PGN: ' + savepgn)
+  saveHistory = game.history({ verbose: true })
+  console.log('History: ' + saveHistory)
+  console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 })
 
 $('#loadBoard').on('click', function () {
-  console.log(saveFen)
   board = Chessboard('myBoard', config)
-  game = new Chess(saveFen)
-  board.position(saveFen)
+  game = new Chess()
+  game.load_pgn([savepgn].join('\n'))
+  board.position(game.fen())
   $status.html(status)
   $fen.html(game.fen())
   $pgn.html(game.pgn())
