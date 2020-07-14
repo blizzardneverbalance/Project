@@ -44,17 +44,24 @@ Search depth:
 <br/>
 <label>Status:</label>
 <div id="status"></div>
+<!--
 <label>FEN:</label>
 <div id="fen"></div>
+-->
 <label>Record:</label>
 <div id="pgn"></div>
+<label>Descriptive Notation:</label>
+<div id="descriptive"></div>
 <br/>
-<div id="move-history" class="move-history">
+<!--
+<div id="move-history" class="move-history"></div>
+->
 <!--- End Example HTML -------------------------------------------------------->
 
 <script src="lib/jquery-3.4.1.min.js"></script>
 <script src="lib/Chessboard-min.js"></script>
 <script src="lib/Chess.js"></script>
+<script type="text/javascript" src="lib/ostinato.js"></script>
 <script>
 // --- Begin Example JS --------------------------------------------------------
 var board = null
@@ -69,6 +76,7 @@ var saveFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 var savepgn = $('#pgn')
 var saveStatus = $('#status')
 var saveHistory = null
+var $descriptive = $('#descriptive')
 
 /* Play with other players
 function onDrop (source, target) {
@@ -118,10 +126,30 @@ function updateStatus () {
       status += ', ' + moveColor + ' is in check'
     }
   }
-
   $status.html(status)
   $fen.html(game.fen())
   $pgn.html(game.pgn())
+  var result = ostinato.convertNotation(game.pgn(), "" + "Descriptive Notation", 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+  fullAction = 1
+  halfAction = 0
+  currentAction = 0
+  actionsString = ''
+  for (action in result.actions) {
+  
+	if (halfAction == 0) {actionsString += fullAction + '. '}
+	halfAction++
+	if (result.validActionCount >= currentAction + 1) {actionsString += result.actions[currentAction] + ' '}
+	else {actionsString += ' ' + result.actions[currentAction] + '  '}
+	currentAction++
+    if (halfAction == 2) {
+        halfAction = 0
+        fullAction++
+        actionsString += ' '
+    }
+  }
+  console.log('actionsString: ')
+  console.log(result.actions)
+  $descriptive.html(actionsString)
 }
 
 function onChange (oldPos, newPos) {
@@ -406,7 +434,7 @@ var onDrop = function (source, target) {
     return "snapback";
   }
 
-  renderMoveHistory(game.history({ verbose: true }));
+  //renderMoveHistory(game.history({ verbose: true }));
   updateStatus()
   if (state) {
   window.setTimeout(makeBestMove, 250);
@@ -430,7 +458,7 @@ var makeBestMove = function () {
   var bestMove = getBestMove(game);
   game.ugly_move(bestMove);
   board.position(game.fen());
-  renderMoveHistory(game.history({ verbose: true }));
+  //renderMoveHistory(game.history({ verbose: true }));
   updateStatus()
   if (game.game_over()) {
     alert("Game over");
@@ -481,6 +509,7 @@ $('#startBtn').on('click', function () {
   $status.html(status)
   $fen.html(game.fen())
   $pgn.html(game.pgn())
+  $descriptive.html('Descriptive Notation')
 })
 
 $('#clearBtn').on('click', function () {
@@ -503,6 +532,7 @@ $('#setRuyLopezBtn').on('click', function () {
   $status.html(status)
   $fen.html(game.fen())
   $pgn.html(game.pgn())
+  $descriptive.html('Descriptive Notation')
   window.setTimeout(makeBestMove, 250);
 })
 
@@ -513,7 +543,7 @@ $("#setUndoBtn").on("click", () => {
     board.position(game.fen());
     result = game.undo();
     board.position(game.fen());
-    renderMoveHistory(game.history({ verbose: true }));
+    //renderMoveHistory(game.history({ verbose: true }));
   }
 });
 document.getElementById("switchState").innerText = state;
@@ -542,6 +572,7 @@ $('#startGame').on('click', function () {
   $status.html(status)
   $fen.html(game.fen())
   $pgn.html(game.pgn())
+  $descriptive.html('Descriptive Notation')
 })
 
 $('#saveBoard').on('click', function () {
@@ -563,6 +594,7 @@ $('#loadBoard').on('click', function () {
   $status.html(status)
   $fen.html(game.fen())
   $pgn.html(game.pgn())
+  $descriptive.html('Descriptive Notation')
 })
 updateStatus()
 // --- End Example JS ----------------------------------------------------------
