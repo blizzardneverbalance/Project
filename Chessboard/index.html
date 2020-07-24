@@ -134,12 +134,39 @@ function updateStatus () {
   halfAction = 0
   currentAction = 0
   actionsString = ''
-  for (action in result.actions) {
+  /**
+  let Pcheck = /[^P]*[$-]/;
+  let Rcheck = /[^R]*[$-]/;
+  let Ncheck = /[^N]*[$-]/;
+  let Bcheck = /[^B]*[$-]/;
+  let Kcheck = /[^K]*[$-]/;
+  let Qcheck = /[^Q]*[$-]/;
+  */
+  let Ccheck = /^(.*?)-/;
+  let Kt = /Kt/gi;
   
+  for (action in result.actions) {
 	if (halfAction == 0) {actionsString += fullAction + '. '}
 	halfAction++
-	if (result.validActionCount >= currentAction + 1) {actionsString += result.actions[currentAction] + ' '}
-	else {actionsString += ' ' + result.actions[currentAction] + '  '}
+	let cur = result.actions[currentAction]
+	//if (result.validActionCount >= currentAction + 1) {
+	if (cur.includes("x")) {
+		cur = cur.replace(Kt, 'N')
+	    actionsString += cur + ' '
+	}
+	else {
+		cur = cur.replace(Kt, 'N')
+		if ((cur.charAt(0) == 'K' || cur.charAt(0) == 'Q')&&(cur.charAt(1) == 'P' || cur.charAt(1) == 'N' || cur.charAt(1) == 'B' || cur.charAt(1) == 'R')) {
+			actionsString += cur.charAt(1) + cur.replace(Ccheck, '-') + ' '
+		}
+		else {
+			actionsString += cur.charAt(0) + cur.replace(Ccheck, '-') + ' '
+		}
+	}
+	//}
+	//else {
+	//actionsString += ' ' + result.actions[currentAction].charAt(0) + result.actions[currentAction].replace(Ccheck, '-') + '  '
+	//}
 	currentAction++
     if (halfAction == 2) {
         halfAction = 0
@@ -147,8 +174,8 @@ function updateStatus () {
         actionsString += ' '
     }
   }
-  console.log('actionsString: ')
-  console.log(result.actions)
+  //console.log('actionsString: ')
+  //console.log(result.actions)
   $descriptive.html(actionsString)
 }
 
@@ -398,7 +425,7 @@ var getPieceValue = function (piece, x, y) {
 };
 
 /* board visualization and games state handling */
-var state = true;
+var state = false;
 /*
 var onDragStart = function (source, piece, position, orientation) {
   if (
